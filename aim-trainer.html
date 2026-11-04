@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>三球射击训练 · Aim Trainer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0f0f13;
+      color: #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ===== 顶部状态栏 ===== */
+    #hud {
+      width: 100%;
+      max-width: 960px;
+      flex-shrink: 0;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, #1a1a22 0%, #14141a 100%);
+      border-bottom: 1px solid #2a2a35;
+      z-index: 10;
+    }
+
+    .hud-group {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #888;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-value.accent {
+      color: #00e5a0;
+    }
+
+    .stat-value.warn {
+      color: #ff6b6b;
+    }
+
+    /* ===== 主菜单 ===== */
+    #menu {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, #1a1a28 0%, #0a0a10 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      gap: 24px;
+    }
+
+    #menu h1 {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #00e5a0, #00b4d8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    #menu p.subtitle {
+      color: #777;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+
+    .diff-buttons {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .diff-btn {
+      width: 140px;
+      padding: 16px 0;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #1a1a24;
+      color: #ccc;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .diff-btn:hover {
+      border-color: #00e5a0;
+      color: #fff;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0, 229, 160, 0.15);
+    }
+
+    .diff-btn .diff-desc {
+      font-size: 12px;
+      font-weight: 400;
+      color: #666;
+    }
+
+    .diff-btn:hover .diff-desc {
+      color: #00e5a0;
+    }
+
+    #start-btn {
+      margin-top: 28px;
+      padding: 14px 56px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 30px;
+      background: linear-gradient(135deg, #00e5a0, #00b4d8);
+      color: #0a0a10;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+
+    #start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(0, 229, 160, 0.4);
+    }
+
+    #start-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .selected {
+      border-color: #00e5a0 !important;
+      background: #122a22 !important;
+      color: #00e5a0 !important;
+    }
+
+    .selected .diff-desc {
+      color: #00e5a0 !important;
+    }
+
+    /* ===== 游戏区域 ===== */
+    #game-area {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      flex: 1;
+      min-height: 480px;
+      background: #121218;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #121218;
+    }
+
+    /* ===== 结算面板 ===== */
+    #result {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 16, 0.92);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 25;
+      gap: 12px;
+    }
+
+    #result h2 {
+      font-size: 36px;
+      color: #00e5a0;
+      margin-bottom: 20px;
+    }
+
+    .result-row {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 8px;
+    }
+
+    .result-item {
+      text-align: center;
+    }
+
+    .result-item .label {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .result-item .value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    #restart-btn {
+      margin-top: 30px;
+      padding: 12px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      border: 2px solid #00e5a0;
+      border-radius: 25px;
+      background: transparent;
+      color: #00e5a0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #restart-btn:hover {
+      background: #00e5a0;
+      color: #0a0a10;
+    }
+
+    .crosshair-hint {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: #555;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部 HUD -->
+  <div id="hud">
+    <div class="hud-group">
+      <div class="stat">
+        <div class="stat-label">得分</div>
+        <div class="stat-value accent" id="score">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">命中</div>
+        <div class="stat-value" id="hits">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">失误</div>
+        <div class="stat-value warn" id="misses">0</div>
+      </div>
+    </div>
+    <div class="hud-group">
+      <div class="stat">
+        <div class="stat-label">准确率</div>
+        <div class="stat-value" id="accuracy">100%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">剩余时间</div>
+        <div class="stat-value" id="timer">30</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏画布区域 -->
+  <div id="game-area">
+    <canvas id="canvas"></canvas>
+    <div class="crosshair-hint">点击绿色目标射击 · ESC 提前结束</div>
+  </div>
+
+  <!-- 主菜单 -->
+  <div id="menu">
+    <h1>三球射击训练</h1>
+    <p class="subtitle">类似 Aim Lab 的反应与瞄准训练 · 始终保持最多 3 个目标</p>
+    <div class="diff-buttons">
+      <button class="diff-btn" data-diff="easy">
+        简单
+        <span class="diff-desc">大目标 · 慢节奏</span>
+      </button>
+      <button class="diff-btn" data-diff="medium">
+        中等
+        <span class="diff-desc">中等目标 · 正常</span>
+      </button>
+      <button class="diff-btn" data-diff="hard">
+        困难
+        <span class="diff-desc">小目标 · 高速</span>
+      </button>
+    </div>
+    <button id="start-btn" disabled>请先选择难度</button>
+  </div>
+
+  <!-- 结算界面 -->
+  <div id="result">
+    <h2>训练结束</h2>
+    <div class="result-row">
+      <div class="result-item">
+        <div class="label">最终得分</div>
+        <div class="value" id="r-score" style="color:#00e5a0">0</div>
+      </div>
+      <div class="result-item">
+        <div class="label">命中 / 总点击</div>
+        <div class="value" id="r-hits">0 / 0</div>
+      </div>
+    </div>
+    <div class="result-row">
+      <div class="result-item">
+        <div class="label">准确率</div>
+        <div class="value" id="r-acc">0%</div>
+      </div>
+      <div class="result-item">
+        <div class="label">平均反应</div>
+        <div class="value" id="r-react">—</div>
+      </div>
+    </div>
+    <button id="restart-btn">再来一次</button>
+  </div>
+
+  <script>
+    // ==================== 难度配置 ====================
+    const DIFFICULTY = {
+      easy: {
+        name: "简单",
+        targetRadius: 42,
+        spawnInterval: 700,
+        targetLifetime: 2800,
+        maxTargets: 3,
+        gameDuration: 30,
+        points: 100
+      },
+      medium: {
+        name: "中等",
+        targetRadius: 28,
+        spawnInterval: 500,
+        targetLifetime: 1800,
+        maxTargets: 3,
+        gameDuration: 30,
+        points: 150
+      },
+      hard: {
+        name: "困难",
+        targetRadius: 17,
+        spawnInterval: 320,
+        targetLifetime: 1200,
+        maxTargets: 3,
+        gameDuration: 30,
+        points: 220
+      }
+    };
+
+    // ==================== 状态 ====================
+    let currentDiff = null;
+    let targets = [];
+    let score = 0;
+    let hits = 0;
+    let misses = 0;
+    let totalClicks = 0;
+    let reactionTimes = [];
+    let gameActive = false;
+    let timeLeft = 30;
+    let spawnTimer = null;
+    let countdownTimer = null;
+    let animId = null;
+
+    // ==================== DOM ====================
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const menu = document.getElementById("menu");
+    const resultPanel = document.getElementById("result");
+    const startBtn = document.getElementById("start-btn");
+    const restartBtn = document.getElementById("restart-btn");
+    const gameArea = document.getElementById("game-area");
+
+    // 难度按钮
+    document.querySelectorAll(".diff-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        currentDiff = btn.dataset.diff;
+        startBtn.disabled = false;
+        startBtn.textContent = `开始 · ${DIFFICULTY[currentDiff].name}`;
+      });
+    });
+
+    startBtn.addEventListener("click", startGame);
+    restartBtn.addEventListener("click", () => {
+      resultPanel.style.display = "none";
+      menu.style.display = "flex";
+      resetStats();
+    });
+
+    // ==================== 画布尺寸 ====================
+    function resizeCanvas() {
+      const rect = gameArea.getBoundingClientRect();
+      // 使用实际像素尺寸，避免模糊
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      canvas.style.width = rect.width + "px";
+      canvas.style.height = rect.height + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", () => {
+      if (gameActive) resizeCanvas();
+    });
+
+    // ==================== 目标类 ====================
+    class Target {
+      constructor(x, y, r, lifetime) {
+        this.x = x;
+        this.y = y;
+        this.r = r;
+        this.lifetime = lifetime;
+        this.born = performance.now();
+        this.hit = false;
+        this.scale = 0;
+      }
+
+      update(now) {
+        const age = now - this.born;
+        if (age < 100) {
+          this.scale = age / 100;
+        } else if (age > this.lifetime - 280) {
+          // 即将消失时闪烁
+          this.scale = 0.65 + 0.35 * Math.sin(age / 35);
+        } else {
+          this.scale = 1;
+        }
+        return age < this.lifetime && !this.hit;
+      }
+
+      draw(ctx) {
+        const r = this.r * this.scale;
+        if (r < 1) return;
+
+        // 外层光晕
+        const glow = ctx.createRadialGradient(this.x, this.y, r * 0.2, this.x, this.y, r * 1.6);
+        glow.addColorStop(0, "rgba(0, 255, 170, 0.45)");
+        glow.addColorStop(0.5, "rgba(0, 200, 140, 0.15)");
+        glow.addColorStop(1, "rgba(0, 180, 120, 0)");
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, r * 1.6, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+
+        // 主体绿色圆
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#00e5a0";
+        ctx.fill();
+
+        // 深色内环
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, r * 0.55, 0, Math.PI * 2);
+        ctx.fillStyle = "#0d1f18";
+        ctx.fill();
+
+        // 白色中心点
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, r * 0.22, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+
+      contains(mx, my) {
+        const dx = mx - this.x;
+        const dy = my - this.y;
+        return dx * dx + dy * dy <= (this.r * this.r);
+      }
+    }
+
+    // ==================== 游戏逻辑 ====================
+    function resetStats() {
+      score = 0;
+      hits = 0;
+      misses = 0;
+      totalClicks = 0;
+      reactionTimes = [];
+      targets = [];
+      updateHUD();
+    }
+
+    function updateHUD() {
+      document.getElementById("score").textContent = score;
+      document.getElementById("hits").textContent = hits;
+      document.getElementById("misses").textContent = misses;
+      const acc = totalClicks === 0 ? 100 : Math.round((hits / totalClicks) * 100);
+      document.getElementById("accuracy").textContent = acc + "%";
+      document.getElementById("timer").textContent = Math.max(0, timeLeft);
+    }
+
+    function getLogicalSize() {
+      // 返回 CSS 逻辑像素尺寸（与鼠标坐标一致）
+      const rect = gameArea.getBoundingClientRect();
+      return { w: rect.width, h: rect.height };
+    }
+
+    function spawnTarget() {
+      if (!gameActive) return;
+      const cfg = DIFFICULTY[currentDiff];
+      if (targets.length >= cfg.maxTargets) return;
+
+      const { w, h } = getLogicalSize();
+      if (w < 50 || h < 50) return; // 画布还没准备好
+
+      const margin = cfg.targetRadius + 16;
+      let x, y;
+      let tries = 0;
+      let ok = false;
+
+      // 多试几次找不重叠的位置
+      while (tries < 12) {
+        x = margin + Math.random() * (w - margin * 2);
+        y = margin + Math.random() * (h - margin * 2);
+        ok = true;
+        for (const t of targets) {
+          const dx = t.x - x;
+          const dy = t.y - y;
+          if (dx * dx + dy * dy < (cfg.targetRadius * 2.2) ** 2) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) break;
+        tries++;
+      }
+
+      // 即使有轻微重叠也强制生成，保证场上有球
+      targets.push(new Target(x, y, cfg.targetRadius, cfg.targetLifetime));
+    }
+
+    function startGame() {
+      if (!currentDiff) return;
+
+      menu.style.display = "none";
+      resultPanel.style.display = "none";
+      resetStats();
+      timeLeft = DIFFICULTY[currentDiff].gameDuration;
+      gameActive = true;
+
+      // 关键：启动时强制重新计算画布尺寸
+      resizeCanvas();
+
+      updateHUD();
+
+      // 立刻生成满 3 个球
+      for (let i = 0; i < DIFFICULTY[currentDiff].maxTargets; i++) {
+        spawnTarget();
+      }
+
+      // 定时补充
+      spawnTimer = setInterval(spawnTarget, DIFFICULTY[currentDiff].spawnInterval);
+
+      // 倒计时
+      countdownTimer = setInterval(() => {
+        timeLeft--;
+        updateHUD();
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+
+      animId = requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      gameActive = false;
+      clearInterval(spawnTimer);
+      clearInterval(countdownTimer);
+      if (animId) cancelAnimationFrame(animId);
+      targets = [];
+
+      document.getElementById("r-score").textContent = score;
+      document.getElementById("r-hits").textContent = `${hits} / ${totalClicks}`;
+      const acc = totalClicks === 0 ? 0 : Math.round((hits / totalClicks) * 100);
+      document.getElementById("r-acc").textContent = acc + "%";
+      if (reactionTimes.length > 0) {
+        const avg = Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length);
+        document.getElementById("r-react").textContent = avg + " ms";
+      } else {
+        document.getElementById("r-react").textContent = "—";
+      }
+      resultPanel.style.display = "flex";
+    }
+
+    // ==================== 点击 ====================
+    canvas.addEventListener("mousedown", (e) => {
+      if (!gameActive) return;
+      const rect = canvas.getBoundingClientRect();
+      // 使用 CSS 逻辑坐标
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      totalClicks++;
+      let hitSomething = false;
+
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        if (t.contains(mx, my)) {
+          t.hit = true;
+          hits++;
+          score += DIFFICULTY[currentDiff].points;
+          reactionTimes.push(performance.now() - t.born);
+          targets.splice(i, 1);
+          hitSomething = true;
+          // 立刻补一个新球
+          spawnTarget();
+          break;
+        }
+      }
+
+      if (!hitSomething) {
+        misses++;
+        score = Math.max(0, score - 30);
+      }
+      updateHUD();
+    });
+
+    // ESC 结束
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && gameActive) {
+        endGame();
+      }
+    });
+
+    // ==================== 渲染循环 ====================
+    function loop(now) {
+      if (!gameActive) return;
+
+      const { w, h } = getLogicalSize();
+      ctx.clearRect(0, 0, w, h);
+
+      // 淡网格背景
+      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      ctx.lineWidth = 1;
+      const grid = 48;
+      for (let x = 0; x < w; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += grid) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // 更新 & 绘制目标
+      targets = targets.filter(t => t.update(now));
+      for (const t of targets) {
+        t.draw(ctx);
+      }
+
+      // 如果场上球太少，主动补
+      const cfg = DIFFICULTY[currentDiff];
+      if (targets.length < cfg.maxTargets) {
+        spawnTarget();
+      }
+
+      animId = requestAnimationFrame(loop);
+    }
+
+    // 页面加载后先初始化一次尺寸
+    window.addEventListener("load", () => {
+      resizeCanvas();
+    });
+    // 立即也执行一次
+    resizeCanvas();
+  </script>
+</body>
+</html>
